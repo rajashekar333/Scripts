@@ -1,0 +1,46 @@
+#!/usr/bin/expect
+set timeout 9
+set sshkey "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDXoZtj7Aj7lyKx7RYKsQqup2XBg3KlWUH4m7ee/I3sm1x9Lxkw/IyJWRYTPYJkTS/Zbtj41517cBTj9euv+JIVGZO+yadmBYbDUlD3O3MUtnYYQh4fg28F49t2p5CbQoXBUfW9eZjnKfTcIp6tm4J0g7iofERxOXNBE09bUqRAKSL8mDwbRX1qwgUBDa5ujLp4xYEUB+jDNn7xlorUkr+72OZOb08odzju4mhYOD+TlBgKvY6vtJbDdJMdBvr8cwGYIPl/+VczH8MDmGpDj8ZdP6CDYXb3Wn6xZWpMmvdq6fmVZmudHqRjh/LlhLFhNtOC2KB0awDITCDmLBMa+iWD"
+set prompt {\$\s*$}
+set username [lindex $argv 0]
+set password [lindex $argv 1]
+set hostname [lindex $argv 2]
+set cmd "/bin/mkdir -p /tmp/expecttestdir"
+log_user 0
+
+if {[llength $argv] == 0} {
+  send_user "Usage: scriptname username $matter  \'password\' hostname\n"
+  exit 1
+}
+
+send_user "\n#####\n# $hostname\n#####\n"
+
+spawn ssh -q -o StrictHostKeyChecking=no $username@$hostname
+
+expect {
+  timeout { send_user "\nFailed to get password prompt\n"; exit 1 }
+  eof { send_user "\nSSH failure for $hostname\n"; exit 1 }
+  "*assword"
+}
+
+send "$password\r"
+
+expect {
+  timeout { send_user "\nLogin failed. Password incorrect.\n"; exit 1}
+  "*\$ "
+}
+
+#send_user "\nPassword is correct\n"
+#expect "$" { send "$cmd\r"}
+#send_user "\n printed hostname \n"
+#expect "*\$ " { send "mkdir -p \/var\/tmp\/expecttestdir\r" }
+
+expect -re $prompt
+send "mkdir -p /var/tmp/pswdtest\r"
+send_user "\n Created dir pswdtest \n"
+expect -re $prompt
+#send "echo '$sshkey' >> /var/tmp/pswdtest/authorixed_keys\r"
+send "if [[ $(grep -c '$sshkey' /var/tmp/pswdtest/authorixed_keys) -eq 0 ]];then echo '$sshkey' >> /var/tmp/pswdtest/authorixed_keys;fi;\r"
+expect -re $prompt
+send "exit\r"
+close
